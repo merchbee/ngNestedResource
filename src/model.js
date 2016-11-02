@@ -1,5 +1,5 @@
 angular.module('ngNestedResource')
-    .factory('BaseModel', function($resource, $injector, $http) {
+    .factory('BaseModel', function ($resource, $injector, $http) {
         return function (url, urlMap, subModels, resourceMethods) {
             resourceMethods = resourceMethods || {};
             var resource = $resource(
@@ -8,15 +8,15 @@ angular.module('ngNestedResource')
                 angular.extend({
                     '_list': {
                         method: 'GET',
-                        isArray:true
+                        isArray: true
                     },
-                    '_store': { method:'POST' },
-                    '_update': { method:'PUT' },
-                    '_destroy': { method:'DELETE' }
+                    '_store': {method: 'POST'},
+                    '_update': {method: 'PUT'},
+                    '_destroy': {method: 'DELETE'}
                 }, resourceMethods)
             );
 
-            var _parseSubModels = function(instance) {
+            var _parseSubModels = function (instance) {
                 angular.forEach(subModels, function (mdClass, field) {
                     if (!angular.isUndefined(instance[field])) {
                         var subModel = $injector.get(mdClass);
@@ -26,7 +26,7 @@ angular.module('ngNestedResource')
                                 instance[field] = (new subModel()).populate(instance[field]);
                             } else {
                                 angular.forEach(instance[field], function (item, key) {
-                                  instance[field][key] = new subModel(item);
+                                    instance[field][key] = new subModel(item);
                                 });
                             }
                         } else {
@@ -83,7 +83,12 @@ angular.module('ngNestedResource')
             };
 
             Model.list = function (params, success, error) {
-                return resource._list(params, null, success, error)
+                return resource._list(params, null, function (data, headers) {
+                    data.headers = headers;
+                    if (success) {
+                        success(data, headers);
+                    }
+                }, error)
                     .$promise.then(function (results) {
                         angular.forEach(results, function (item, k) {
                             results[k] = _parseSubModels(item);
@@ -93,7 +98,7 @@ angular.module('ngNestedResource')
                     });
             };
 
-            Model.get = function(params, success, error) {
+            Model.get = function (params, success, error) {
                 return resource.get(params, null, success, error)
                     .$promise.then(function (result) {
                         return _parseSubModels(result);

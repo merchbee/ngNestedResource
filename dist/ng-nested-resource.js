@@ -4,24 +4,24 @@ angular.module('ngNestedResource', [
     'ngResource'
 ]);
 angular.module('ngNestedResource')
-    .factory('BaseCollection', function() {
+    .factory('BaseCollection', function () {
         var BaseCollection = function (model, perPage, pageNumber) {
             this.model = model;
             this.queryParams = {};
             this.page = pageNumber ? pageNumber : 1;
             this.perPage = perPage ? perPage : 20;
-            this.totalItems;
-            this.totalPages;
+            this.totalItems = 0;
+            this.totalPages = 0;
             this.pages = [];
             this.endReached = false;
         };
-        BaseCollection.prototype = new Array();
+        BaseCollection.prototype = [];
 
         BaseCollection.prototype.populate = function (data) {
             var collection = this;
             collection.clear();
 
-            data.forEach(function(obj) {
+            data.forEach(function (obj) {
                 collection.push(new collection.model(obj));
             });
 
@@ -43,7 +43,7 @@ angular.module('ngNestedResource')
                 if (results.length < collection.queryParams.take) {
                     collection.endReached = true;
                 }
-
+                collection.setPagination(results.headers);
                 angular.forEach(results, function (item) {
                     collection.push(item);
                 });
@@ -63,6 +63,7 @@ angular.module('ngNestedResource')
 
             return this.model.list(collection.queryParams, success, error).then(function (results) {
                 collection.clear();
+                collection.setPagination(results.headers);
                 angular.forEach(results, function (item) {
                     collection.push(item);
                 });
@@ -76,23 +77,25 @@ angular.module('ngNestedResource')
 
             collection.queryParams.skip = 0;
             if (!collection.queryParams.take) {
-              collection.queryParams.take = collection.perPage;
+                collection.queryParams.take = collection.perPage;
             }
 
             angular.extend(collection.queryParams, params);
 
-            return this.model.list(collection.queryParams, success, error).then(function (results) {
-                collection.clear();
-                angular.forEach(results, function (item) {
-                    collection.push(item);
-                });
+            return this.model.list(collection.queryParams, success, error)
+                .then(function (results) {
+                    collection.clear();
+                    collection.setPagination(results.headers);
+                    angular.forEach(results, function (item) {
+                        collection.push(item);
+                    });
 
-                return collection;
-            });
+                    return collection;
+                });
         };
 
         BaseCollection.prototype.clear = function () {
-            while(this.length > 0) {
+            while (this.length > 0) {
                 this.pop();
             }
 
@@ -107,25 +110,36 @@ angular.module('ngNestedResource')
         BaseCollection.prototype.count = function (success, error) {
             var collection = this;
 
-            return this.model.count(this.queryParams, function (count) {
-                collection.totalItems = count;
-                collection.totalPages = (collection.totalItems >= collection.perPage) ? parseInt(collection.totalItems / collection.perPage) : 1;
-
-                collection.pages = [];
-                for (i = 1; i <= collection.totalPages ; i++ ) {
-                    collection.pages.push({
-                        number: i,
-                        text: i
-                    });
-                }
-
+            return this.model.count(this.queryParams, function (count, headers) {
+                collection.setPagination(undefined, count);
+                success(count, headers);
                 return count;
-            });
+            }, error);
+        };
+
+        BaseCollection.prototype.setPagination = function (headers, count) {
+            var collection = this;
+
+            if (angular.isUndefined(headers) && angular.isUndefined(count)) {
+                return 0;
+            }
+
+            collection.totalItems = count || headers('x-total-count');
+            collection.totalPages = (collection.totalItems >= collection.perPage) ? parseInt(collection.totalItems / collection.perPage) : 1;
+
+            collection.pages = [];
+            for (var i = 1; i <= collection.totalPages; i++) {
+                collection.pages.push({
+                    number: i,
+                    text: i
+                });
+            }
+
         };
 
         BaseCollection.prototype.selectPage = function (page, params, success, error) {
             if (page > this.totalPages || page < 1) {
-                return ;
+                return;
             }
 
             if (params) {
@@ -135,7 +149,7 @@ angular.module('ngNestedResource')
             var collection = this;
 
             this.queryParams.take = this.perPage;
-            this.queryParams.skip = (page - 1)  * this.perPage;
+            this.queryParams.skip = (page - 1) * this.perPage;
             this.page = page;
 
             return this.model.list(this.queryParams, success, error).then(function (results) {
@@ -174,7 +188,7 @@ angular.module('ngNestedResource')
         };
 
         return function (model) {
-            var Collection = function(perPage, pageNumber) {
+            var Collection = function (perPage, pageNumber) {
                 return new BaseCollection(model, perPage, pageNumber);
             };
             Collection.prototype = BaseCollection.prototype;
@@ -185,7 +199,7 @@ angular.module('ngNestedResource')
     });
 
 angular.module('ngNestedResource')
-    .factory('BaseModel', ["$resource", "$injector", "$http", function($resource, $injector, $http) {
+    .factory('BaseModel', ["$resource", "$injector", "$http", function ($resource, $injector, $http) {
         return function (url, urlMap, subModels, resourceMethods) {
             resourceMethods = resourceMethods || {};
             var resource = $resource(
@@ -194,15 +208,15 @@ angular.module('ngNestedResource')
                 angular.extend({
                     '_list': {
                         method: 'GET',
-                        isArray:true
+                        isArray: true
                     },
-                    '_store': { method:'POST' },
-                    '_update': { method:'PUT' },
-                    '_destroy': { method:'DELETE' }
+                    '_store': {method: 'POST'},
+                    '_update': {method: 'PUT'},
+                    '_destroy': {method: 'DELETE'}
                 }, resourceMethods)
             );
 
-            var _parseSubModels = function(instance) {
+            var _parseSubModels = function (instance) {
                 angular.forEach(subModels, function (mdClass, field) {
                     if (!angular.isUndefined(instance[field])) {
                         var subModel = $injector.get(mdClass);
@@ -212,7 +226,7 @@ angular.module('ngNestedResource')
                                 instance[field] = (new subModel()).populate(instance[field]);
                             } else {
                                 angular.forEach(instance[field], function (item, key) {
-                                  instance[field][key] = new subModel(item);
+                                    instance[field][key] = new subModel(item);
                                 });
                             }
                         } else {
@@ -269,7 +283,12 @@ angular.module('ngNestedResource')
             };
 
             Model.list = function (params, success, error) {
-                return resource._list(params, null, success, error)
+                return resource._list(params, null, function (data, headers) {
+                    data.headers = headers;
+                    if (success) {
+                        success(data, headers);
+                    }
+                }, error)
                     .$promise.then(function (results) {
                         angular.forEach(results, function (item, k) {
                             results[k] = _parseSubModels(item);
@@ -279,7 +298,7 @@ angular.module('ngNestedResource')
                     });
             };
 
-            Model.get = function(params, success, error) {
+            Model.get = function (params, success, error) {
                 return resource.get(params, null, success, error)
                     .$promise.then(function (result) {
                         return _parseSubModels(result);
