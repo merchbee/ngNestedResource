@@ -119,7 +119,7 @@ angular.module('ngNestedResource')
                 return 0;
             }
 
-            collection.totalItems = count || headers('x-total-count');
+            collection.totalItems = count || headers('x-total-count') || collection.totalItems;
             collection.totalPages = (collection.totalItems >= collection.perPage) ? parseInt(collection.totalItems / collection.perPage) : 1;
 
             collection.pages = [];
