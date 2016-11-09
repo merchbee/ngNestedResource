@@ -9,6 +9,7 @@ angular.module('ngNestedResource')
             this.totalPages = 0;
             this.pages = [];
             this.endReached = false;
+            this.loading = false;
         };
         BaseCollection.prototype = [];
 
@@ -34,6 +35,7 @@ angular.module('ngNestedResource')
             this.queryParams.take = take ? take : this.perPage;
             this.queryParams.skip = this.length;
 
+            collection.loading = true;
             return this.model.list(this.queryParams, success, error).then(function (results) {
                 if (results.length < collection.queryParams.take) {
                     collection.endReached = true;
@@ -43,6 +45,7 @@ angular.module('ngNestedResource')
                     collection.push(item);
                 });
 
+                collection.loading = false;
                 return collection;
             });
         };
@@ -56,6 +59,7 @@ angular.module('ngNestedResource')
                 collection.queryParams.take = collection.perPage;
             }
 
+            collection.loading = true;
             return this.model.list(collection.queryParams, success, error).then(function (results) {
                 collection.clear();
                 collection.setPagination(results.headers);
@@ -63,6 +67,7 @@ angular.module('ngNestedResource')
                     collection.push(item);
                 });
 
+                collection.loading = false;
                 return collection;
             });
         };
@@ -75,6 +80,7 @@ angular.module('ngNestedResource')
                 collection.queryParams.take = collection.perPage;
             }
 
+            collection.loading = true;
             angular.extend(collection.queryParams, params);
 
             return this.model.list(collection.queryParams, success, error)
@@ -85,6 +91,7 @@ angular.module('ngNestedResource')
                         collection.push(item);
                     });
 
+                    collection.loading = false;
                     return collection;
                 });
         };
@@ -147,12 +154,14 @@ angular.module('ngNestedResource')
             this.queryParams.skip = (page - 1) * this.perPage;
             this.page = page;
 
+            collection.loading = true;
             return this.model.list(this.queryParams, success, error).then(function (results) {
                 collection.clear();
                 angular.forEach(results, function (item) {
                     collection.push(item);
                 });
 
+                collection.loading = false;
                 return collection;
             });
 
