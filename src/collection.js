@@ -1,5 +1,5 @@
 angular.module('ngNestedResource')
-    .factory('BaseCollection', function () {
+    .factory('BaseCollection', function ($filter) {
         var BaseCollection = function (model, perPage, pageNumber) {
             this.model = model;
             this.queryParams = {};
@@ -161,7 +161,7 @@ angular.module('ngNestedResource')
                     collection.push(item);
                 });
 
-                collection.loading = false;
+                
                 return collection;
             });
 
@@ -173,6 +173,14 @@ angular.module('ngNestedResource')
 
         BaseCollection.prototype.noNext = function () {
             return this.page === this.totalPages;
+        };
+        
+        BaseCollection.prototype.getByType = function (value, type) {
+            type = type || 'id';
+            var obj = {};
+            obj[type] = value;
+
+            return $filter('filter')(this, obj);
         };
 
         BaseCollection.prototype.remove = function (model) {
