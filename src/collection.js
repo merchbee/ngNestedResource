@@ -174,13 +174,23 @@ angular.module('ngNestedResource')
         BaseCollection.prototype.noNext = function () {
             return this.page === this.totalPages;
         };
-        
-        BaseCollection.prototype.getByType = function (value, type) {
-            type = type || 'id';
-            var obj = {};
-            obj[type] = value;
 
-            return $filter('filter')(this, obj);
+        /**
+         * Searching for model in collection.
+         * @param value
+         * @param type
+         * @returns BaseModel | null
+         */
+        BaseCollection.prototype.findByType = function (value, type) {
+            type = type || 'id';
+
+            for (var i = 0; i < this.length; i++) {
+                if (this[i][type] == value ) {
+                    return this[i];
+                }
+            }
+
+            return null;
         };
 
         BaseCollection.prototype.remove = function (model) {
